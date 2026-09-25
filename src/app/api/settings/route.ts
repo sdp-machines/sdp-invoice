@@ -59,6 +59,16 @@ const companyState =
     body.companyState ?? ""
   ).trim();
 
+const quotationStartNumber =
+  Number(
+    body.quotationStartNumber
+  );
+
+const orderFormStartNumber =
+  Number(
+    body.orderFormStartNumber
+  );
+
     if (
       !Number.isFinite(gst) ||
       gst < 0 ||
@@ -69,6 +79,42 @@ const companyState =
           success: false,
           message:
             "GST must be between 0 and 100.",
+        },
+        {
+          status: 422,
+        }
+      );
+    }
+
+    if (
+      !Number.isInteger(
+        quotationStartNumber
+      ) ||
+      quotationStartNumber < 1
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Quotation starting serial must be a whole number greater than 0.",
+        },
+        {
+          status: 422,
+        }
+      );
+    }
+
+    if (
+      !Number.isInteger(
+        orderFormStartNumber
+      ) ||
+      orderFormStartNumber < 1
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Order Form starting serial must be a whole number greater than 0.",
         },
         {
           status: 422,
@@ -93,6 +139,18 @@ saveSetting(
   SETTING_KEYS.COMPANY_STATE,
   companyState,
   "text"
+),
+
+saveSetting(
+  SETTING_KEYS.QUOTATION_START_NUMBER,
+  quotationStartNumber.toString(),
+  "number"
+),
+
+saveSetting(
+  SETTING_KEYS.ORDER_FORM_START_NUMBER,
+  orderFormStartNumber.toString(),
+  "number"
 ),
 
 saveSetting(
