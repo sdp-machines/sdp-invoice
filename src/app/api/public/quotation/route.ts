@@ -8,6 +8,7 @@ import { getSettings } from "@/lib/settings";
 
 import {
   generateDocumentNumber,
+  rebuildDocumentNumber,
 } from "@/lib/document-number";
 
 import {
@@ -721,222 +722,449 @@ export async function POST(
     }
 
     /* =====================================================
-       DOCUMENT NUMBER
-
-       Example:
-       SDPM/RJ/26-27/PT/001
+       CREATE OR UPDATE PUBLIC DOCUMENT
     ===================================================== */
+
+    const existingDocumentId =
+      Number(
+        body.existingDocumentId
+      );
+
+    const hasExistingDocument =
+      Number.isInteger(
+        existingDocumentId
+      ) &&
+      existingDocumentId >
+        0;
+
+    const existingDocument =
+      hasExistingDocument
+        ? await prisma.document.findUnique({
+            where: {
+              id:
+                existingDocumentId,
+            },
+          })
+        : null;
+
+    if (
+      hasExistingDocument &&
+      !existingDocument
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Document not found.",
+        },
+        {
+          status: 404,
+        }
+      );
+    }
+
+    if (
+      existingDocument &&
+      existingDocument.status !==
+        "PREVIEWED"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Only previewed documents can be edited from this page.",
+        },
+        {
+          status: 400,
+        }
+      );
+    }
+
+    if (
+      existingDocument &&
+      existingDocument.documentType !==
+        documentType
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Document type cannot be changed while editing.",
+        },
+        {
+          status: 422,
+        }
+      );
+    }
 
     const documentNumber =
-      await generateDocumentNumber({
-        customerState,
+      existingDocument
+        ? rebuildDocumentNumber({
+            existingDocumentNumber:
+              existingDocument.documentNumber,
 
-        issuerInitials,
+            customerState,
 
-        documentType,
+            issuerInitials,
+          })
+        : await generateDocumentNumber({
+            customerState,
 
-        startingSerial:
-          documentType ===
-          "ORDER_FORM"
-            ? Number(
-                settings.orderFormStartNumber
-              )
-            : Number(
-                settings.quotationStartNumber
-              ),
-      });
+            issuerInitials,
 
-    /* =====================================================
-       CREATE DOCUMENT
-    ===================================================== */
+            documentType,
+
+            startingSerial:
+              documentType ===
+              "ORDER_FORM"
+                ? Number(
+                    settings.orderFormStartNumber
+                  )
+                : Number(
+                    settings.quotationStartNumber
+                  ),
+          });
 
     const document =
-      await prisma.document.create({
-        data: {
-          documentNumber,
+      existingDocument
+        ? await prisma.$transaction(
+            async (
+              tx
+            ) => {
+              await tx.documentItem.deleteMany({
+                where: {
+                  documentId:
+                    existingDocument.id,
+                },
+              });
 
-          documentType,
+              await tx.documentRecipient.deleteMany({
+                where: {
+                  documentId:
+                    existingDocument.id,
+                },
+              });
 
-          status:
-            "PREVIEWED",
+              return tx.document.update({
+                where: {
+                  id:
+                    existingDocument.id,
+                },
 
-          issuerInitials,
+                data: {
+                  documentNumber,
 
-          /* ---------------------------------------------
-             CUSTOMER SNAPSHOT
-          --------------------------------------------- */
+                  documentType,
 
-          customerNameFirm:
-            nameFirmName,
+                  status:
+                    "PREVIEWED",
 
-          customerPhone,
+                  issuerInitials,
 
-          customerWhatsapp,
+                  customerNameFirm:
+                    nameFirmName,
 
-          customerGST,
+                  customerPhone,
 
-          customerCity,
+                  customerWhatsapp,
 
-          customerState,
+                  customerGST,
 
-          addressLine1,
+                  customerCity,
 
-          addressLine2,
+                  customerState,
 
-          addressLine3,
+                  addressLine1,
 
-          /* ---------------------------------------------
-             TOTALS
-          --------------------------------------------- */
+                  addressLine2,
 
-          subtotal,
+                  addressLine3,
 
-          gstType,
+                  subtotal,
 
-          gstPercent,
+                  gstType,
 
-          cgstPercent,
+                  gstPercent,
 
-          cgstAmount,
+                  cgstPercent,
 
-          sgstPercent,
+                  cgstAmount,
 
-          sgstAmount,
+                  sgstPercent,
 
-          igstPercent,
+                  sgstAmount,
 
-          igstAmount,
+                  igstPercent,
 
-          gstAmount,
+                  igstAmount,
 
-          grandTotal,
+                  gstAmount,
 
-          additionalNotes:
-            cleanString(
-              body.additionalNotes
-            ),
+                  grandTotal,
 
-          /* ---------------------------------------------
-             SNAPSHOTS
-          --------------------------------------------- */
+                  additionalNotes:
+                    cleanString(
+                      body.additionalNotes
+                    ),
 
-          headerBannerSnapshot:
-            settings.headerBanner ||
-            null,
+                  headerBannerSnapshot:
+                    settings.headerBanner ||
+                    null,
 
-          footerBannerSnapshot:
-            settings.footerBanner ||
-            null,
+                  footerBannerSnapshot:
+                    settings.footerBanner ||
+                    null,
 
-          termsSnapshot:
-            settings.terms ||
-            null,
+                  termsSnapshot:
+                    settings.terms ||
+                    null,
 
-          warrantySnapshot:
-            settings.warranty ||
-            null,
+                  warrantySnapshot:
+                    settings.warranty ||
+                    null,
 
-          quoteFooterSnapshot:
-            settings.quoteFooter ||
-            null,
+                  quoteFooterSnapshot:
+                    settings.quoteFooter ||
+                    null,
 
-          signatureImageSnapshot:
-            settings.signatureImage ||
-            null,
+                  signatureImageSnapshot:
+                    settings.signatureImage ||
+                    null,
 
-          /*
-           * Public route only creates quotations,
-           * therefore bank details are not required.
-           */
-          bankDetailsSnapshot:
-  documentType ===
-  "ORDER_FORM"
-    ? settings.bankDetails ||
-      null
-    : null,
+                  bankDetailsSnapshot:
+                    documentType ===
+                    "ORDER_FORM"
+                      ? settings.bankDetails ||
+                        null
+                      : null,
 
-          createdById:
-            systemOwner.id,
+                  approvedAt:
+                    null,
 
-          /* ---------------------------------------------
-             ITEMS
-          --------------------------------------------- */
+                  items: {
+                    create:
+                      preparedItems,
+                  },
 
-          items: {
-            create:
-              preparedItems,
-          },
+                  recipients: {
+                    create: [
+                      ...toEmails.map(
+                        (
+                          email
+                        ) => ({
+                          email,
 
-          /* ---------------------------------------------
-             RECIPIENTS
-          --------------------------------------------- */
+                          type:
+                            "TO" as const,
+                        })
+                      ),
 
-          recipients: {
-            create: [
-              ...toEmails.map(
-                (
-                  email
-                ) => ({
-                  email,
+                      ...ccEmails.map(
+                        (
+                          email
+                        ) => ({
+                          email,
 
-                  type:
-                    "TO" as const,
-                })
-              ),
+                          type:
+                            "CC" as const,
+                        })
+                      ),
+                    ],
+                  },
 
-              ...ccEmails.map(
-                (
-                  email
-                ) => ({
-                  email,
+                  activities: {
+                    create: {
+                      action:
+                        "PUBLIC_DOCUMENT_EDITED",
 
-                  type:
-                    "CC" as const,
-                })
-              ),
-            ],
-          },
+                      description:
+                        `${
+                          documentType ===
+                          "ORDER_FORM"
+                            ? "Order Form"
+                            : "Quotation"
+                        } updated from public document page. Reference: ${documentNumber}. Issuer: ${issuerInitials}. State: ${customerState}. GST type: ${gstType}.`,
+                    },
+                  },
+                },
 
-          /* ---------------------------------------------
-             ACTIVITY
-          --------------------------------------------- */
+                select: {
+                  id:
+                    true,
 
-          activities: {
-  create: {
-    action:
-      documentType ===
-      "ORDER_FORM"
-        ? "PUBLIC_ORDER_FORM_CREATED"
-        : "PUBLIC_QUOTATION_CREATED",
+                  documentNumber:
+                    true,
 
-    description:
-      `${
-        documentType ===
-        "ORDER_FORM"
-          ? "Order Form"
-          : "Quotation"
-      } generated from public document page. Reference: ${documentNumber}. Issuer: ${issuerInitials}. State: ${customerState}. GST type: ${gstType}.`,
-  },
-},
-        },
+                  issuerInitials:
+                    true,
 
-        select: {
-          id:
-            true,
+                  customerState:
+                    true,
 
-          documentNumber:
-            true,
+                  status:
+                    true,
+                },
+              });
+            }
+          )
+        : await prisma.document.create({
+            data: {
+              documentNumber,
 
-          issuerInitials:
-            true,
+              documentType,
 
-          customerState:
-            true,
+              status:
+                "PREVIEWED",
 
-          status:
-            true,
-        },
-      });
+              issuerInitials,
+
+              customerNameFirm:
+                nameFirmName,
+
+              customerPhone,
+
+              customerWhatsapp,
+
+              customerGST,
+
+              customerCity,
+
+              customerState,
+
+              addressLine1,
+
+              addressLine2,
+
+              addressLine3,
+
+              subtotal,
+
+              gstType,
+
+              gstPercent,
+
+              cgstPercent,
+
+              cgstAmount,
+
+              sgstPercent,
+
+              sgstAmount,
+
+              igstPercent,
+
+              igstAmount,
+
+              gstAmount,
+
+              grandTotal,
+
+              additionalNotes:
+                cleanString(
+                  body.additionalNotes
+                ),
+
+              headerBannerSnapshot:
+                settings.headerBanner ||
+                null,
+
+              footerBannerSnapshot:
+                settings.footerBanner ||
+                null,
+
+              termsSnapshot:
+                settings.terms ||
+                null,
+
+              warrantySnapshot:
+                settings.warranty ||
+                null,
+
+              quoteFooterSnapshot:
+                settings.quoteFooter ||
+                null,
+
+              signatureImageSnapshot:
+                settings.signatureImage ||
+                null,
+
+              bankDetailsSnapshot:
+                documentType ===
+                "ORDER_FORM"
+                  ? settings.bankDetails ||
+                    null
+                  : null,
+
+              createdById:
+                systemOwner.id,
+
+              items: {
+                create:
+                  preparedItems,
+              },
+
+              recipients: {
+                create: [
+                  ...toEmails.map(
+                    (
+                      email
+                    ) => ({
+                      email,
+
+                      type:
+                        "TO" as const,
+                    })
+                  ),
+
+                  ...ccEmails.map(
+                    (
+                      email
+                    ) => ({
+                      email,
+
+                      type:
+                        "CC" as const,
+                    })
+                  ),
+                ],
+              },
+
+              activities: {
+                create: {
+                  action:
+                    documentType ===
+                    "ORDER_FORM"
+                      ? "PUBLIC_ORDER_FORM_CREATED"
+                      : "PUBLIC_QUOTATION_CREATED",
+
+                  description:
+                    `${
+                      documentType ===
+                      "ORDER_FORM"
+                        ? "Order Form"
+                        : "Quotation"
+                    } generated from public document page. Reference: ${documentNumber}. Issuer: ${issuerInitials}. State: ${customerState}. GST type: ${gstType}.`,
+                },
+              },
+            },
+
+            select: {
+              id:
+                true,
+
+              documentNumber:
+                true,
+
+              issuerInitials:
+                true,
+
+              customerState:
+                true,
+
+              status:
+                true,
+            },
+          });
 
     /* =====================================================
        GENERATE PDF
@@ -964,7 +1192,9 @@ export async function POST(
         true,
 
       message:
-        "Quotation generated successfully.",
+        existingDocument
+          ? "Document updated successfully."
+          : "Document generated successfully.",
 
       data: {
         id:
