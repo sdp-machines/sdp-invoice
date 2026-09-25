@@ -972,6 +972,8 @@ export async function POST(
         customerState,
 
         issuerInitials,
+
+        documentType,
       });
 
     const status =
