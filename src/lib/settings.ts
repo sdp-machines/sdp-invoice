@@ -12,7 +12,9 @@ export const SETTING_KEYS = {
   QUOTE_FOOTER: "quote_footer",
   SIGNATURE_IMAGE: "signature_image",
   REFERENCE_PREFIX: "reference_prefix",
-   BANK_DETAILS: "bank_details",
+  BANK_DETAILS: "bank_details",
+  QUOTATION_START_NUMBER: "quotation_start_number",
+  ORDER_FORM_START_NUMBER: "order_form_start_number",
 } as const;
 
 export async function getSetting(
@@ -91,6 +93,16 @@ companyState:
       map.get(
         SETTING_KEYS.REFERENCE_PREFIX
       ) ?? "SDPM/RJ/OE",
+
+    quotationStartNumber:
+      map.get(
+        SETTING_KEYS.QUOTATION_START_NUMBER
+      ) ?? "1",
+
+    orderFormStartNumber:
+      map.get(
+        SETTING_KEYS.ORDER_FORM_START_NUMBER
+      ) ?? "1",
   };
 }
 
