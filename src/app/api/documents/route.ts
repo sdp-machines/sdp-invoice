@@ -974,6 +974,16 @@ export async function POST(
         issuerInitials,
 
         documentType,
+
+        startingSerial:
+          documentType ===
+          "ORDER_FORM"
+            ? Number(
+                settings.orderFormStartNumber
+              )
+            : Number(
+                settings.quotationStartNumber
+              ),
       });
 
     const status =
