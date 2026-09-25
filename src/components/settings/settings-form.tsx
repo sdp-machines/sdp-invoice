@@ -29,6 +29,10 @@ type Props = {
     referencePrefix: string;
 
     bankDetails: string;
+
+    quotationStartNumber: string;
+
+    orderFormStartNumber: string;
   };
 };
 
@@ -50,6 +54,20 @@ export default function SettingsForm({
 const [companyState, setCompanyState] =
   useState(
     initialSettings.companyState
+  );
+
+  const [
+    quotationStartNumber,
+    setQuotationStartNumber,
+  ] = useState(
+    initialSettings.quotationStartNumber
+  );
+
+  const [
+    orderFormStartNumber,
+    setOrderFormStartNumber,
+  ] = useState(
+    initialSettings.orderFormStartNumber
   );
 
   const [
@@ -151,7 +169,9 @@ const [companyState, setCompanyState] =
                 gst,
 
                 gstType,
-  companyState,
+                companyState,
+                quotationStartNumber,
+                orderFormStartNumber,
 
                 terms,
 
@@ -373,6 +393,59 @@ const [companyState, setCompanyState] =
     </p>
   </div>
 </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Document Numbering"
+        description="Set the minimum serial number used for new quotations and order forms. Each document type maintains its own sequence."
+      >
+        <div className="grid gap-6 md:grid-cols-2">
+          <div>
+            <Label>
+              Quotation Starting Serial
+            </Label>
+
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={quotationStartNumber}
+              onChange={(event) =>
+                setQuotationStartNumber(
+                  event.target.value
+                )
+              }
+              className="w-full rounded-lg border border-slate-300 px-4 py-3"
+            />
+
+            <p className="mt-2 text-xs text-slate-500">
+              Used as the first quotation serial if no higher quotation serial already exists for the current financial year.
+            </p>
+          </div>
+
+          <div>
+            <Label>
+              Order Form Starting Serial
+            </Label>
+
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={orderFormStartNumber}
+              onChange={(event) =>
+                setOrderFormStartNumber(
+                  event.target.value
+                )
+              }
+              className="w-full rounded-lg border border-slate-300 px-4 py-3"
+            />
+
+            <p className="mt-2 text-xs text-slate-500">
+              Used as the first order form serial if no higher order form serial already exists for the current financial year.
+            </p>
+          </div>
+        </div>
       </SettingsSection>
 
       {/* Header */}
