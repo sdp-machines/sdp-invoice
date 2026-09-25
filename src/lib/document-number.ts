@@ -54,12 +54,17 @@ function cleanInitials(
 export async function generateDocumentNumber({
   customerState,
   issuerInitials,
+  documentType,
 }: {
   customerState:
     string;
 
   issuerInitials:
     string;
+
+  documentType:
+    | "QUOTATION"
+    | "ORDER_FORM";
 }) {
   const stateCode =
     getStateCode(
@@ -118,6 +123,8 @@ export async function generateDocumentNumber({
   const documents =
     await prisma.document.findMany({
       where: {
+        documentType,
+
         documentDate: {
           gte:
             financialYearStart,
@@ -139,13 +146,18 @@ export async function generateDocumentNumber({
     });
 
   /*
-   * Global FY sequence:
+   * Separate FY sequence per document type:
    *
+   * QUOTATION:
    * SDPM/RJ/26-27/PT/001
    * SDPM/AP/26-27/AS/002
-   * SDPM/RJ/26-27/PT/003
    *
-   * Sequence does not reset by state/issuer.
+   * ORDER_FORM:
+   * SDPM/RJ/26-27/PT/001
+   * SDPM/AP/26-27/AS/002
+   *
+   * Sequence does not reset by state/issuer,
+   * but quotations and order forms are counted separately.
    */
   let highestSequence =
     0;
