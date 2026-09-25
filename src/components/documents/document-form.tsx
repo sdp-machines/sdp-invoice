@@ -992,9 +992,11 @@ export default function DocumentForm({
           url,
           {
             method:
-              isEditing
-                ? "PUT"
-                : "POST",
+              publicMode
+                ? "POST"
+                : isEditing
+                  ? "PUT"
+                  : "POST",
 
             headers: {
               "Content-Type":
@@ -1003,6 +1005,11 @@ export default function DocumentForm({
 
             body:
               JSON.stringify({
+                existingDocumentId:
+                  publicMode && isEditing
+                    ? document!.id
+                    : null,
+
                 documentType,
 
                 issuerInitials:
