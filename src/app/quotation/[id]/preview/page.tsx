@@ -16,6 +16,10 @@ type PreviewPageProps = {
   params: Promise<{
     id: string;
   }>;
+
+  searchParams: Promise<{
+    editToken?: string;
+  }>;
 };
 
 export const dynamic =
@@ -23,9 +27,13 @@ export const dynamic =
 
 export default async function PublicDocumentPreviewPage({
   params,
+  searchParams,
 }: PreviewPageProps) {
   const { id } =
     await params;
+
+  const { editToken = "" } =
+    await searchParams;
 
   const documentId =
     Number(id);
@@ -127,7 +135,11 @@ export default async function PublicDocumentPreviewPage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <Link
-              href="/quotation"
+              href={
+                editToken
+                  ? `/quotation/${document.id}/edit?editToken=${encodeURIComponent(editToken)}`
+                  : `/quotation/${document.id}/edit`
+              }
               className="mb-3 inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-slate-950"
             >
               <ArrowLeft size={17} />
