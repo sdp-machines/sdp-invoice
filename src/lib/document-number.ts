@@ -55,6 +55,7 @@ export async function generateDocumentNumber({
   customerState,
   issuerInitials,
   documentType,
+  startingSerial = 1,
 }: {
   customerState:
     string;
@@ -65,6 +66,9 @@ export async function generateDocumentNumber({
   documentType:
     | "QUOTATION"
     | "ORDER_FORM";
+
+  startingSerial?:
+    number;
 }) {
   const stateCode =
     getStateCode(
@@ -193,9 +197,20 @@ export async function generateDocumentNumber({
     }
   }
 
+  const normalizedStartingSerial =
+    Number.isInteger(
+      startingSerial
+    ) &&
+    startingSerial > 0
+      ? startingSerial
+      : 1;
+
   const nextSequence =
-    highestSequence +
-    1;
+    Math.max(
+      highestSequence +
+        1,
+      normalizedStartingSerial
+    );
 
   const paddedSequence =
     String(
